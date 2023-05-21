@@ -229,7 +229,7 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="flex items-center justify-between bg-gradient-to-r from-gray-900 to-gray-700 p-6 text-white">
+      <footer className="flex items-center justify-between fixed bottom-0 left-0 w-full bg-gradient-to-r from-gray-900 to-gray-700 p-6 text-white">
         <a
           href="https://github.com/heysourin"
           target="_blank"
