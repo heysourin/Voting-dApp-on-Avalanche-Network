@@ -4,12 +4,15 @@ import styles from "../styles/Home.module.css";
 import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { contractABI, contractAddress } from "./Engine";
+import Navbar from "./Navbar";
 
 export default function Home() {
   const [candidatesUseState, setCandidatesUseState] = useState([]);
-
   const [voters, setVoters] = useState([]);
   const [account, setCurrentAccount] = useState();
+  const [walletAddress, setWalletAddress] = useState("");
+  const [votedOrNot, setVotedOrNot] = useState();
+  const [candidateId, setCandidateId] = useState();
 
   const checkIfWalletIsConnected = async () => {
     try {
@@ -56,31 +59,7 @@ export default function Home() {
     }
   };
 
-  // const getCandidates = async (candidateId) => {
-  //   const provider = new ethers.providers.Web3Provider(window.ethereum);
-
-  //   const connection = new ethers.Contract(
-  //     contractAddress,
-  //     contractABI,
-  //     provider
-  //   );
-  //   // const election = await ethers.connection(Election.info.abi).at("0x...");
-  //   const candidatesData = await connection.candidates(candidateId);
-  //   // setCandidatesUseState(
-  //   //   candidatesData.map((candidate) => ({
-  //   //     id: candidate.id,
-  //   //     name: candidate.name,
-  //   //     voteCount: candidate.voteCount,
-  //   //   }))
-  //   // );
-  //   setCandidatesUseState([...candidatesUseState, candidatesData]);
-  //   // candidatesData.map((eachEl)=>{
-  //   //   console.log(eachEl.name);
-  //   // })
-  //   console.log(candidatesUseState);
-  // };
-
-  const getCandidates = async () => {
+  const getCandidates = async (candidateId) => {
     const provider = new ethers.providers.Web3Provider(window.ethereum);
 
     const connection = new ethers.Contract(
@@ -89,32 +68,24 @@ export default function Home() {
       provider
     );
 
-    const candidateLength = Number(await connection.candidataCount());
-    console.log(candidateLength);
+    const candidatesCount = Number(await connection.candidataCount());
+    console.log(candidatesCount);
 
-    let candidate;
-    for (let i = 1; i < candidateLength + 1; i++) {
-      candidate = await connection.candidates(i);
-      console.log(candidate);//[{},{},{}]
-      // setCandidatesUseState([...candidatesUseState], candidate);
-      const items = await Promise.all(
-        candidate.map(async (i) => {
-          const id = await candidate.id.toNumber();
-          const name = await candidate.name;
-          const voteCount = Number(await candidate.voteCount);
+    for (var i = 1; i <= candidatesCount; i++) {
+      const candidate = await connection.candidates(i);
 
-          let item = {
-            id: i.id,
-            name: i.name,
-            voteCount: i.voteCount,
-          };
-          console.log('loaded', item);
-          return item;
-          setCandidatesUseState(item);
-        })
-      );
+      const id = candidate[0];
+      const name = candidate[1];
+      const voteCount = candidate[2];
+
+      const item = {
+        id: Number(id),
+        name: name.toString(),
+        voteCount: voteCount.toNumber(),
+      };
+      setCandidatesUseState((prev) => [...prev, item]);
     }
-    console.log(candidatesUseState);
+    // console.log(candidatesUseState);
   };
 
   const getVoters = async () => {
@@ -126,71 +97,170 @@ export default function Home() {
     setVoters(votersData.map((voter) => voter.address));
   };
 
+  const checkVotingStatus = async (voter) => {
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+
+      const connection = new ethers.Contract(
+        contractAddress,
+        contractABI,
+        provider
+      );
+
+      const hasVoted = await connection.voters(voter);
+      console.log(voter, "hasVoted: ", hasVoted);
+      setVotedOrNot(hasVoted);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const changeHandler = (e) => {
+    setWalletAddress(e.target.value);
+  };
+
+  const handleButtonClick = async () => {
+    await checkVotingStatus(walletAddress);
+  };
+
+  const vote = async (candidateId) => {
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = await provider.getSigner();
+
+      const connection = new ethers.Contract(
+        contractAddress,
+        contractABI,
+        signer
+      );
+
+      const vote = await connection.vote(candidateId);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleChange2 = (e) => {
+    setCandidateId(e.target.value);
+  };
+
+  const buttonClick2 = () => {
+    vote(candidateId);
+  };
+
   useEffect(() => {
     checkIfWalletIsConnected();
     connectWallet();
     getCandidates();
-    // getVoters();
   }, []);
+
   return (
-    <div className={styles.container}>
+    <div className="">
       <Head>
-        <title>Create Next App</title>
+        <title>Voting Dapp ~ heysourin</title>
         <meta name="description" content="Generated by create next app" />
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" href="/icon.png" />
       </Head>
 
-      <main className={styles.main}>
-        {" "}
+      <main className="">
+        <Navbar account={account} connectWallet={connectWallet} />
+
+        <h1 className="font-bold text-3xl m-5">Candidates:</h1>
+        <div className="flex flex-row">
+          <table className="w-full border-collapse mx-10">
+            <thead>
+              <tr>
+                <th className="py-2 px-4 border">Candidate Id</th>
+                <th className="py-2 px-4 border">Candidate Name</th>
+                <th className="py-2 px-4 border">Vote Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              {candidatesUseState.map((candidate, i) => (
+                <tr key={i}>
+                  <td className="py-2 px-4 border">{candidate.id}</td>
+                  <td className="py-2 px-4 border">{candidate.name}</td>
+                  <td className="py-2 px-4 border">{candidate.voteCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* @note CHECK IF VOTED*/}
         <div>
-          <h1>Election</h1>
-          <h2>Candidates</h2>
-          {/* @note */}
-          {/* <ul>
-            {candidatesUseState.map((candidatesUseState) => (
-              <li key={candidatesUseState[0]}>
-                <strong>{candidatesUseState[0].id}</strong>
-                <strong>{candidatesUseState[0].name}</strong>
-                <span>{candidatesUseState[0].voteCount}</span>
-              </li>
-            ))}
-          </ul> */}
-          {/* {
-            candidatesUseState.map((curElm, i)=>{
-              return <p key={curElm.id}>Name: {curElm.name}</p>
-            })
-          } */}
-          <h2>Voters</h2>
-          <ul>
-            {voters.map((voter) => (
-              <li key={voter}>{voter}</li>
-            ))}
-          </ul>
-          <button
-            onClick={async () => {
-              const address = ethers.utils.getAddress("...");
-              const election = await ethers
-                .contract(Election.info.abi)
-                .at("0x...");
-              await election.vote(1);
-            }}
-          >
-            Vote
-          </button>
+          <h2 className="font-bold text-3xl mt-10 ml-5">Check Voted or Not:</h2>
+          <div className="flex flex-row mx-10">
+            <input
+              type="text"
+              className="border border-gray-300 px-4 m-4"
+              placeholder="Enter wallet address"
+              value={walletAddress || ""}
+              onChange={changeHandler}
+            />
+            <button
+              onClick={handleButtonClick}
+              className="bg-gradient-to-r from-orange-600 to-yellow-500 text-white font-bold py-2 px-4 rounded m-4"
+            >
+              Check if voted
+            </button>
+            <div className="mt-6">
+              {votedOrNot ? (
+                <p>You have already voted, can not vote anymore!</p>
+              ) : (
+                <p>You have not voted yet!</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h2 className="font-bold text-3xl mt-8 ml-5">Vote: </h2>
+          <div className="flex flex-row mx-10">
+            <input
+              type="text"
+              className=" w-24 mx-3 my-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              pattern="\d{0,2}"
+              maxLength="2"
+              placeholder="Candidate Id"
+              value={candidateId || ""}
+              onChange={handleChange2}
+              required
+            />
+            <button
+              onClick={buttonClick2}
+              className="bg-gradient-to-r from-purple-700 to-blue-500 text-white font-bold py-2 px-4 rounded m-4"
+            >
+              Vote
+            </button>
+            <div className="mt-6"></div>
+          </div>
         </div>
       </main>
 
-      <footer className={styles.footer}>
+      <footer className="flex items-center justify-between bg-gradient-to-r from-gray-900 to-gray-700 p-6 text-white">
         <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+          href="https://github.com/heysourin"
           target="_blank"
-          rel="noopener noreferrer"
+          className="text-left"
         >
-          Powered by{" "}
-          <span className={styles.logo}>
-            <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
-          </span>
+          My Github
         </a>
+        <a
+          href="https://linkedin.com/in/heysourin"
+          target="_blank"
+          className="text-left"
+        >
+          My LinkenIn
+        </a>
+        <span className="text-right">
+          <a
+            href="https://github.com/heysourin/Voting-dApp-on-Avalanche-Network"
+            className="text-white"
+          >
+            Source Code
+          </a>
+        </span>
       </footer>
     </div>
   );
