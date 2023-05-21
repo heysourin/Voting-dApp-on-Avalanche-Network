@@ -88,15 +88,6 @@ export default function Home() {
     // console.log(candidatesUseState);
   };
 
-  const getVoters = async () => {
-    const connection = new ethers.providers.HttpProvider(
-      "http://localhost:8545"
-    );
-    const election = await ethers.contract(Election.info.abi).at("0x...");
-    const votersData = await election.voters();
-    setVoters(votersData.map((voter) => voter.address));
-  };
-
   const checkVotingStatus = async (voter) => {
     try {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
